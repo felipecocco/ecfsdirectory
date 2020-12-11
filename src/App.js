@@ -22,7 +22,9 @@ import InputLabel from "@material-ui/core/InputLabel";
 import IconButton from "@material-ui/core/IconButton";
 import SearchIcon from "@material-ui/icons/Search";
 import Avatar from "@material-ui/core/Avatar";
+import CircularProgress from "@material-ui/core/CircularProgress";
 import Tabletop from "tabletop";
+var _ = require("lodash");
 
 const ECFSBar = styled(AppBar)({
   background: "#fe5000",
@@ -69,12 +71,10 @@ const useStyles = makeStyles((theme) => ({
   },
 }));
 
-const cards = [1, 2, 3, 4, 5, 6, 7, 8, 9];
-
 export default function Album() {
   const [dept, setDept] = React.useState("");
   const [name, setName] = React.useState("");
-  const [data, setData] = useState({ filteredData: [] });
+  const [data, setData] = useState({ loading: true, filteredData: [] });
   useEffect(() => {
     Tabletop.init({
       key: "187cjvjLlbjlE8VqvBXvybdB2idg27cQn0tAx0RZSXFs",
@@ -82,7 +82,7 @@ export default function Album() {
     })
       .then((responseData) => {
         console.log(responseData);
-        setData({ raw: responseData, filteredData: responseData });
+        setData({ loading: false, raw: responseData, filteredData: [] });
       })
       .catch((err) => console.warn(err));
   }, []);
@@ -95,6 +95,30 @@ export default function Album() {
   };
   const classes = useStyles();
 
+  const filterResults = () => {
+    let filteredResults = [];
+    let deptQuery = dept;
+    let nameQuery = name;
+    if (deptQuery == "ECFS") {
+    } else {
+      if (deptQuery == "Fieldston Upper") {
+        deptQuery = "Fieldston";
+      }
+      filteredResults = _.filter(
+        data.raw,
+        (user) => user.department == deptQuery
+      );
+    }
+    filteredResults = _.filter(
+      filteredResults,
+      (user) => user.name.indexOf(nameQuery) > -1
+    );
+    setData({
+      ...data,
+      filteredData: filteredResults,
+    });
+  };
+
   return (
     <React.Fragment>
       <CssBaseline />
@@ -105,83 +129,104 @@ export default function Album() {
           </Typography>
         </Toolbar>
       </ECFSBar>
-      <main>
-        <div className={classes.heroContent}>
-          <Container maxWidth="md">
-            <form className={classes.formControl} noValidate autoComplete="off">
-              <TextField
-                style={{ minWidth: "40ch" }}
-                id="outlined-basic"
-                label="Name"
-                variant="outlined"
-                onChange={handleChangeName}
-              />
-
-              <FormControl className={classes.formControl} variant="outlined">
-                <InputLabel id="demo-simple-select-label">
-                  Department
-                </InputLabel>
-                <Select
-                  style={{ minWidth: "35ch" }}
-                  labelId="demo-simple-select-label"
-                  id="demo-simple-select"
-                  value={dept}
-                  onChange={handleChangeDept}
-                >
-                  <MenuItem value={""}>Select Department</MenuItem>
-                  <MenuItem value={20}>Twenty</MenuItem>
-                  <MenuItem value={30}>Thirty</MenuItem>
-                </Select>
-              </FormControl>
-              <Button
-                variant="contained"
-                color="primary"
-                size="large"
-                className={classes.button}
-                startIcon={<SearchIcon />}
-                onClick={() => console.log(name + " " + dept)}
+      {data.loading ? (
+        <CircularProgress
+          style={{ position: "absolute", left: "50%", top: "50%" }}
+        />
+      ) : (
+        <main>
+          <div className={classes.heroContent}>
+            <Container maxWidth="md">
+              <form
+                className={classes.formControl}
+                noValidate
+                autoComplete="off"
               >
-                Search
-              </Button>
-            </form>
+                <TextField
+                  style={{ minWidth: "40ch" }}
+                  id="outlined-basic"
+                  label="Name"
+                  variant="outlined"
+                  onChange={handleChangeName}
+                />
+
+                <FormControl className={classes.formControl} variant="outlined">
+                  <InputLabel id="demo-simple-select-label">
+                    Department
+                  </InputLabel>
+                  <Select
+                    style={{ minWidth: "35ch" }}
+                    labelId="demo-simple-select-label"
+                    id="demo-simple-select"
+                    value={dept}
+                    onChange={handleChangeDept}
+                    placeholder={"Select Department"}
+                  >
+                    {[
+                      "ECFS",
+                      "Fieldston Lower",
+                      "Fieldston Upper",
+                      "Fieldston Middle",
+                      "Ethical Culture",
+                      "Fieldston Lower",
+                      "Finance & Administration",
+                      "Facilities",
+                      "Technology",
+                    ].map((item) => (
+                      <MenuItem value={item}>{item}</MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+                <Button
+                  variant="contained"
+                  color="primary"
+                  size="large"
+                  className={classes.button}
+                  startIcon={<SearchIcon />}
+                  onClick={filterResults}
+                >
+                  Search
+                </Button>
+              </form>
+            </Container>
+          </div>
+          <Container className={classes.cardGrid} maxWidth="md">
+            {/* End hero unit */}
+            <Grid container spacing={4}>
+              {data.filteredData.map((user) => (
+                <Grid item key={user.email} xs={12} sm={6} md={4}>
+                  <Card className={classes.card}>
+                    <center>
+                      <Avatar
+                        src={
+                          "data:image/jpe;base64, " +
+                          user.picture.replace(/_/g, "/").replace(/-/g, "+")
+                        }
+                        style={{
+                          width: "96px",
+                          height: "96px",
+                          marginTop: "5px",
+                        }}
+                      />
+                    </center>
+                    <CardContent className={classes.cardContent}>
+                      <Typography gutterBottom variant="h5" component="h2">
+                        {user.name}
+                      </Typography>
+                      <Typography>{user.title}</Typography>
+                      <Typography>{user.department}</Typography>
+                      <Typography>{user.email}</Typography>
+                      {user.phone.length > 1 ? (
+                        <Typography>{user.phone}</Typography>
+                      ) : null}
+                    </CardContent>
+                  </Card>
+                </Grid>
+              ))}
+            </Grid>
           </Container>
-        </div>
-        <Container className={classes.cardGrid} maxWidth="md">
-          {/* End hero unit */}
-          <Grid container spacing={4}>
-            {data.filteredData.map((user) => (
-              <Grid item key={user.email} xs={12} sm={6} md={4}>
-                <Card className={classes.card}>
-                  <center>
-                    <Avatar
-                      src={
-                        "data:image/jpe;base64, " +
-                        user.picture.replace(/_/g, "/").replace(/-/g, "+")
-                      }
-                      style={{
-                        width: "96px",
-                        height: "96px",
-                        marginTop: "5px",
-                      }}
-                    />
-                  </center>
-                  <CardContent className={classes.cardContent}>
-                    <Typography gutterBottom variant="h5" component="h2">
-                      {user.name}
-                    </Typography>
-                    <Typography>{user.title}</Typography>
-                    <Typography>{user.department}</Typography>
-                    <Typography>{user.email}</Typography>
-                    {user.phone.length > 1 ? (
-                      <Typography>{user.phone}</Typography>
-                    ) : null}
-                  </CardContent>
-                </Card>
-              </Grid>
-            ))}
-          </Grid>
-        </Container>
-      </main>
+        </main>
+      )}
     </React.Fragment>
   );
 }
