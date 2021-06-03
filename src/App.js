@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import TextField from "@material-ui/core/TextField";
 import AppBar from "@material-ui/core/AppBar";
 import Button from "@material-ui/core/Button";
@@ -24,6 +24,48 @@ import SearchIcon from "@material-ui/icons/Search";
 import Avatar from "@material-ui/core/Avatar";
 import CircularProgress from "@material-ui/core/CircularProgress";
 import Tabletop from "tabletop";
+
+const DepartmentRelation = {
+  Admissions: [
+    "Admissions",
+    "Admissions & Financial Aid",
+    "Admissions Ethical Culture",
+    "Admissions Fieldston",
+    "Admissions Fieldston Lower",
+    "Admissions Fieldston Upper",
+  ],
+  Athletics: ["Athletics", "Fieldston Sports"],
+  "Auxiliary Programs": [
+    "Auxiliary Programs",
+    "FEP",
+    "Related Programs",
+    "Summer Programs - Fieldston YDC",
+  ],
+  "Campus Safety": ["Campus Safety"],
+  Communications: ["Communications"],
+  "Design Center/Fieldston Press": ["Design Center/Fieldston Press"],
+  "Ethical Culture": ["Ethical Culture", "EC Kindergarten"],
+  Facilities: ["Facilities"],
+  "Fieldston Middle": [
+    "Fieldston Middle / Fieldston Upper",
+    "Fieldston Middle/Fieldston Upper",
+    "Fieldston/Fieldston Middle",
+    "Fieldston Middle",
+  ],
+  "Fieldston Lower": ["Fieldston Lower", "School Office - FL"],
+  "Fieldston Upper": [
+    "Fieldston Upper",
+    "Fieldston Middle / Fieldston Upper",
+    "Fieldston Middle/Fieldston Upper",
+    "Fieldston",
+    "FS",
+  ],
+  "Finance & Administration": ["Finance & Administration"],
+  "Head of School": ["Head Of School"],
+  "Institutional Advancement & Alumni": ["Institutional Advancement & Alumni"],
+
+  Technology: ["Technology"],
+};
 var _ = require("lodash");
 
 const ECFSBar = styled(AppBar)({
@@ -70,9 +112,42 @@ const useStyles = makeStyles((theme) => ({
     padding: theme.spacing(6),
   },
 }));
+function DirPersonCard({ user }) {
+  console.log(user);
+  const classes = makeStyles();
 
+  return (
+    <Grid item key={user.email} xs={12} sm={6} md={4}>
+      <Card className={classes.card}>
+        <center>
+          <Avatar
+            src={
+              "data:image/jpe;base64, " +
+              user.picture.replace(/_/g, "/").replace(/-/g, "+")
+            }
+            style={{
+              width: "96px",
+              height: "96px",
+              marginTop: "5px",
+            }}
+          />
+        </center>
+        <CardContent className={classes.cardContent}>
+          <Typography gutterBottom variant="h5" component="h2">
+            {user.name}
+          </Typography>
+          <Typography>{user.title}</Typography>
+          <Typography>{user.department}</Typography>
+          <Typography>{user.email}</Typography>
+          {user.phone.length > 1 ? <Typography>{user.phone}</Typography> : null}
+        </CardContent>
+      </Card>
+    </Grid>
+  );
+}
 export default function Album() {
-  const [dept, setDept] = React.useState("");
+  const SearchRef = useRef();
+  const [dept, setDept] = React.useState("ECFS");
   const [name, setName] = React.useState("");
   const [data, setData] = useState({ loading: true, filteredData: [] });
   useEffect(() => {
@@ -81,8 +156,12 @@ export default function Album() {
       simpleSheet: true,
     })
       .then((responseData) => {
-        console.log(responseData);
-        setData({ loading: false, raw: responseData, filteredData: [] });
+        // console.log(responseData);
+        setData({
+          loading: false,
+          raw: responseData,
+          filteredData: _.orderBy(responseData, ["name"]),
+        });
       })
       .catch((err) => console.warn(err));
   }, []);
@@ -96,27 +175,47 @@ export default function Album() {
   const classes = useStyles();
 
   const filterResults = () => {
+    // console.log(SearchRef.current.value);
+    // console.log(dept);
     let filteredResults = [];
     let deptQuery = dept;
     let nameQuery = name;
     if (deptQuery == "ECFS") {
-    } else {
-      if (deptQuery == "Fieldston Upper") {
-        deptQuery = "Fieldston";
-      }
       filteredResults = _.filter(
         data.raw,
-        (user) => user.department == deptQuery
+        (user) =>
+          user.name
+            .toLowerCase()
+            .indexOf(SearchRef.current.value.toLowerCase()) > -1
       );
+      setData({
+        ...data,
+        filteredData: filteredResults,
+      });
+    } else {
+      // if (deptQuery == "Fieldston Upper") {
+      //   deptQuery = "Fieldston";
+      // }
+      // filteredResults = _.filter(
+      //   data.raw,
+      //   (user) => user.department == deptQuery
+      // );
+
+      filteredResults = _.filter(data.raw, (user) =>
+        DepartmentRelation[deptQuery].includes(user.department)
+      );
+      filteredResults = _.filter(
+        filteredResults,
+        (user) =>
+          user.name
+            .toLowerCase()
+            .indexOf(SearchRef.current.value.toLowerCase()) > -1
+      );
+      setData({
+        ...data,
+        filteredData: filteredResults,
+      });
     }
-    filteredResults = _.filter(
-      filteredResults,
-      (user) => user.name.indexOf(nameQuery) > -1
-    );
-    setData({
-      ...data,
-      filteredData: filteredResults,
-    });
   };
 
   return (
@@ -125,7 +224,7 @@ export default function Album() {
       <ECFSBar position="relative">
         <Toolbar>
           <Typography variant="h6" color="#fe5000" noWrap>
-            ECFS Staff Directory
+            ECFS Employee Directory
           </Typography>
         </Toolbar>
       </ECFSBar>
@@ -147,7 +246,7 @@ export default function Album() {
                   id="outlined-basic"
                   label="Name"
                   variant="outlined"
-                  onChange={handleChangeName}
+                  inputRef={SearchRef}
                 />
 
                 <FormControl className={classes.formControl} variant="outlined">
@@ -162,19 +261,11 @@ export default function Album() {
                     onChange={handleChangeDept}
                     placeholder={"Select Department"}
                   >
-                    {[
-                      "ECFS",
-                      "Fieldston Lower",
-                      "Fieldston Upper",
-                      "Fieldston Middle",
-                      "Ethical Culture",
-                      "Fieldston Lower",
-                      "Finance & Administration",
-                      "Facilities",
-                      "Technology",
-                    ].map((item) => (
-                      <MenuItem value={item}>{item}</MenuItem>
-                    ))}
+                    {["ECFS", ...Object.keys(DepartmentRelation)].map(
+                      (item) => (
+                        <MenuItem value={item}>{item}</MenuItem>
+                      )
+                    )}
                   </Select>
                 </FormControl>
                 <Button
@@ -183,7 +274,7 @@ export default function Album() {
                   size="large"
                   className={classes.button}
                   startIcon={<SearchIcon />}
-                  onClick={filterResults}
+                  onClick={() => filterResults()}
                 >
                   Search
                 </Button>
@@ -194,34 +285,7 @@ export default function Album() {
             {/* End hero unit */}
             <Grid container spacing={4}>
               {data.filteredData.map((user) => (
-                <Grid item key={user.email} xs={12} sm={6} md={4}>
-                  <Card className={classes.card}>
-                    <center>
-                      <Avatar
-                        src={
-                          "data:image/jpe;base64, " +
-                          user.picture.replace(/_/g, "/").replace(/-/g, "+")
-                        }
-                        style={{
-                          width: "96px",
-                          height: "96px",
-                          marginTop: "5px",
-                        }}
-                      />
-                    </center>
-                    <CardContent className={classes.cardContent}>
-                      <Typography gutterBottom variant="h5" component="h2">
-                        {user.name}
-                      </Typography>
-                      <Typography>{user.title}</Typography>
-                      <Typography>{user.department}</Typography>
-                      <Typography>{user.email}</Typography>
-                      {user.phone.length > 1 ? (
-                        <Typography>{user.phone}</Typography>
-                      ) : null}
-                    </CardContent>
-                  </Card>
-                </Grid>
+                <DirPersonCard user={user} />
               ))}
             </Grid>
           </Container>
